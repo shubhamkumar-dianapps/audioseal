@@ -1,0 +1,122 @@
+{
+  "info": {
+    "name": "AudioSeal Watermark — Embed & Verify",
+    "_postman_id": "a7ab42923-embed-verify-watermark01",
+    "description": "Embed an AudioSeal watermark into uploaded audio, then verify it back.\n\n## Flows\n1. **Register Ownership** — map a 16-bit watermark to an owner (so verify can show the owner)\n2. **Embed Watermark (Upload Audio)** — upload audio + a watermark_integer; returns the WATERMARKED audio file to download\n3. **Verify Watermarked Audio** — upload the embedded file; returns watermark_detected=true, the binary/integer/hex, score, and owner\n4. **Verify Clean Audio** — upload audio with no watermark; returns watermark_detected=false\n5. **Lookup by Integer** — resolve a watermark integer to its owner\n\n## How embed works\n`POST /api/watermark/embed/` (multipart): fields `audio_file` (File) + `watermark_integer` (0–65535) + optional `alpha` (0.0–2.0, default 1.0).\nThe response is the binary WAV file (download it). The embedded value is also returned in response headers:\n`X-Watermark-Integer`, `X-Watermark-Binary`, `X-Watermark-Hex`.\n\nUse Postman's **Send and Download** for the embed request so you can save the watermarked file, then upload that saved file to the Verify request.\n\n## Auth\nCollection-level **Basic Auth** (admin / 22@admiN) is sent on every request. (Endpoints are AllowAny — auth is not enforced.)\n\n## Variables\n- `base_url` — http://localhost:8000\n- `watermark_integer` — value to embed / look up (default 42923)\n- `audio_file_path` — local audio to watermark\n- `watermarked_file_path` — the file you saved from the embed response\n- `no_watermark_file_path` — clean audio for the negative case",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      { "key": "username", "value": "{{admin_user}}", "type": "string" },
+      { "key": "password", "value": "{{admin_password}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000", "type": "string" },
+    { "key": "admin_user", "value": "admin", "type": "string" },
+    { "key": "admin_password", "value": "22@admiN", "type": "string" },
+    { "key": "watermark_integer", "value": "42923", "type": "string" },
+    { "key": "watermark_binary", "value": "1010011110101011", "type": "string" },
+    { "key": "audio_file_path", "value": "/home/dell/audio-masking/sample_no_watermark.wav", "type": "string" },
+    { "key": "watermarked_file_path", "value": "/home/dell/audio-masking/sample_watermarked_42923.wav", "type": "string" },
+    { "key": "no_watermark_file_path", "value": "/home/dell/audio-masking/sample_no_watermark.wav", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Register Ownership",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "options": { "raw": { "language": "json" } },
+          "raw": "{\n  \"watermark_binary\": \"{{watermark_binary}}\",\n  \"copyright_name\": \"TVD COPYRIGHT\",\n  \"company_name\": \"TVD Technologies\",\n  \"owner_name\": \"TVD Media Pvt Ltd\",\n  \"contact_email\": \"legal@tvd.com\",\n  \"notes\": \"Primary catalog registration\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/watermark/register/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "watermark", "register", ""]
+        },
+        "description": "Register the 16-bit watermark binary (= integer 42923) against an owner. Expected 201 CREATED. Run once so the Verify/Lookup requests can resolve the owner. Returns 409 if already registered."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Embed Watermark (Upload Audio)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "audio_file", "type": "file", "src": "{{audio_file_path}}", "description": "Audio to watermark. In the UI set this row's type to 'File' and click 'Select Files'." },
+            { "key": "watermark_integer", "value": "{{watermark_integer}}", "type": "text", "description": "0–65535. The 16-bit payload to embed." },
+            { "key": "alpha", "value": "1.0", "type": "text", "description": "Optional watermark strength 0.0–2.0 (default 1.0)." }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/api/watermark/embed/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "watermark", "embed", ""]
+        },
+        "description": "Upload audio + watermark_integer; embeds the AudioSeal watermark and RETURNS the watermarked WAV file (16kHz mono, 16-bit PCM).\n\n>> Use 'Send and Download' (dropdown next to Send) to save the file, then upload that saved file in request 3.\n\nThe embedded value is also in the response headers: X-Watermark-Integer, X-Watermark-Binary, X-Watermark-Hex.\n\nDo NOT set Content-Type manually — Postman builds the multipart boundary."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Verify Watermarked Audio",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "audio_file", "type": "file", "src": "{{watermarked_file_path}}", "description": "The watermarked file you saved from request 2 (or the sample_watermarked_42923.wav)." }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/api/watermark/verify/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "watermark", "verify", ""]
+        },
+        "description": "Upload the watermarked audio. Expected 200 with:\n- watermark_detected: true\n- confidence: ~1.0 (the score)\n- binary_message / integer_message / hex_message: the embedded value (e.g. 42923)\n- ownership_verified: true (if registered) + owner object\n- audit_id"
+      },
+      "response": []
+    },
+    {
+      "name": "4. Verify Clean Audio (no watermark)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "audio_file", "type": "file", "src": "{{no_watermark_file_path}}", "description": "Audio with no embedded watermark." }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/api/watermark/verify/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "watermark", "verify", ""]
+        },
+        "description": "Upload clean (un-watermarked) audio. Expected 200 with watermark_detected=false, confidence near 0.0, all message fields null, ownership_verified=false."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Lookup by Integer",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/watermark/lookup/{{watermark_integer}}/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "watermark", "lookup", "{{watermark_integer}}", ""]
+        },
+        "description": "Resolve a 16-bit integer (0–65535) to its registered owner. Expected 200 after request 1; 404 WATERMARK_NOT_FOUND if not registered."
+      },
+      "response": []
+    }
+  ]
+}

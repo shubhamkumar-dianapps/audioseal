@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python manage.py *)",
+      "Bash(pytest *)",
+      "Bash(coverage *)",
+      "Bash(pip install *)",
+      "Bash(pip show *)",
+      "Bash(find . *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(grep *)",
+      "Bash(docker compose *)",
+      "Bash(docker build *)"
+    ]
+  }
+}

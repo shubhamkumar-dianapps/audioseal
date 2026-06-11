@@ -1,0 +1,52 @@
+[project]
+name = "audio-masking"
+version = "0.1.0"
+description = "AudioSeal watermark verification and copyright ownership service"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "django>=5.0,<6.0",
+    "djangorestframework>=3.15",
+    "psycopg2-binary>=2.9",
+    "python-decouple>=3.8",
+    "gunicorn>=21.0",
+    "whitenoise>=6.6",
+    "structlog>=24.0",
+    "torch>=2.2",
+    "torchaudio>=2.2",
+    "audioseal==0.2.0",
+    "filetype>=1.2",
+    "soundfile>=0.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-django>=4.8",
+    "factory-boy>=3.3",
+    "coverage[toml]>=7.0",
+    "pytest-mock>=3.12",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["apps", "core"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "core.settings.local"
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--tb=short -v"
+
+[tool.coverage.run]
+source = ["apps", "core"]
+omit = ["*/migrations/*", "*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 90
